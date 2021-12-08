@@ -104,7 +104,7 @@ def estimate_noise_parameters(image, blocksize):
 
     phi = [0.0]
     sigma = [0.0]
-    while (len(phi) < 20) and (len(phi) < 3 or np.min(np.abs(phi[1:-1] - phi[-1])) > 0.001):
+    while (len(phi) < 20) and (len(phi) < 3 or np.min(np.abs(np.array(phi)[1:-1] - np.array(phi)[-1])) > 0.001):
 
         a = np.square(sigma[-1]) * np.cos(phi[-1])
         b = np.square(sigma[-1]) * np.sin(phi[-1])
