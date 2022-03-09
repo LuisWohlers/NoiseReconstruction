@@ -16,30 +16,10 @@ def im2col(A, M1, M2):
     out_view = np.lib.stride_tricks.as_strided(A, shape=shp, strides=strd)
     return out_view.reshape(M1 * M2, -1)
 
-
 def get_valid_block_index(image, M1, M2):
+    print("getvalid2")
     block = im2col(image.T, M1, M2)
-    invalid_grayvalue = []
-    for j in range(0, block.shape[1]):
-        min_gv = np.min(block[:, j])
-        max_gv = np.max(block[:, j])
-        if min_gv == max_gv and not min_gv in invalid_grayvalue:
-            invalid_grayvalue.append(min_gv)
-
-    valid_block_index = np.zeros((block.shape[1], 1))
-    valid_block_index_count = 0
-    for j in range(0, block.shape[1]):
-        block_ok = True
-        for i in range(0, block.shape[0]):
-            if block[
-                i, j] in invalid_grayvalue or block[i, j] <= 0 or block[i, j] >= 255:
-                block_ok = False
-                break
-        if block_ok:
-            valid_block_index_count = valid_block_index_count + 1
-            valid_block_index[valid_block_index_count - 1] = j
-    return valid_block_index[0:valid_block_index_count].astype(int)
-
+    return np.arange(0, block.shape[1]).astype(int)
 
 def get_blocks(image, phi, row_parity, valid_block_index, M1, M2):
     block = im2col(VST(image.T, phi), M1, M2)
