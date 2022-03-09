@@ -16,11 +16,6 @@ def im2col(A, M1, M2):
     out_view = np.lib.stride_tricks.as_strided(A, shape=shp, strides=strd)
     return out_view.reshape(M1 * M2, -1)
 
-def get_valid_block_index(image, M1, M2):
-    print("getvalid2")
-    block = im2col(image.T, M1, M2)
-    return np.arange(0, block.shape[1]).astype(int)
-
 def get_blocks(image, phi, row_parity, valid_block_index, M1, M2):
     block = im2col(VST(image.T, phi), M1, M2)
     block = block[int(row_parity) - 1::2, valid_block_index]
@@ -81,7 +76,8 @@ def estimate_noise_parameters(image, blocksize):
     M1 = blocksize
     M2 = blocksize
 
-    valid_block_index = get_valid_block_index(image, M1, M2)
+    block = im2col(image.T, M1, M2)
+    valid_block_index = np.arange(0, block.shape[1]).astype(int)
 
     phi = [0.0]
     sigma = [0.0]
