@@ -101,3 +101,20 @@ def reconstructNoise(originalimage, degradedimage, bitdepth, analyse_blocksize, 
     print(b_final)
 
     return finalimage, a_original, b_original, a_final, b_final
+
+def reconstructNoise_RGB(originalimage, degradedimage, bitdepth, analyse_blocksize, renoise_regionsize, renoise_blocksize,
+                     sigma,a=-1,b=-1):
+
+    starttime = time.time()
+    finalimage = np.zeros(originalimage.shape)
+    for i in range(0,3):
+        if a == -1 and b == -1:
+            a_original, b_original = est.estimate_noise_parameters(originalimage[:,:,i],analyse_blocksize)
+        VSTdegradedimage = VSTab(degradedimage[:,:,i], a_original, b_original, sigma).astype(float)
+        renoisedVST = renoisePCA(VSTdegradedimage,renoise_regionsize,renoise_blocksize,sigma)
+        finalimage[:,:,i] = VSTreverse(renoisedVST,a_original,b_original,sigma,bitdepth)
+    endtime = time.time()
+    print("time expired: " + endtime-starttime + " seconds")
+
+    return finalimage
+
