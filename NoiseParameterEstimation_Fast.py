@@ -49,7 +49,7 @@ def compute_std(image, phi, tau, block_count, M1, M2):
 
 
 def optimize(func, a, b, accuracy, image, tau, block_count, M1, M2):
-    opt_x = scipy.optimize.fminbound(func, a, b, args=(image, tau, block_count, M1, M2), xtol=accuracy, maxfun=500,
+    opt_x = scipy.optimize.fminbound(func, a, b, args=(image, tau, block_count, M1, M2), xtol=accuracy, maxfun=10000,
                                      full_output=0, disp=0)
     return opt_x
 
