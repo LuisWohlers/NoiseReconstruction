@@ -1,8 +1,9 @@
 from scipy.stats import kurtosis
 import scipy
 import numpy as np
+import numba
 
-
+@numba.jit(nopython=True)
 def im2col(A, M1, M2):
     # according to https://stackoverflow.com/questions/30109068/implement-matlabs-im2col-sliding-in-python
     A = A.T
