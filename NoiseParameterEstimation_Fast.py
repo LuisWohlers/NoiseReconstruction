@@ -75,7 +75,7 @@ def estimate_noise_parameters(image, blocksize):
     M1 = blocksize
     M2 = blocksize
 
-    block = im2col(image.T, M1, M2)
+    block = im2col(image, M1, M2)
     valid_block_index = np.arange(0, block.shape[1]).astype(int)
 
     phi = [0.0]
