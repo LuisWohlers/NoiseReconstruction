@@ -1,12 +1,9 @@
 from scipy.stats import kurtosis
 import scipy
 import numpy as np
-import numba
 
-@numba.jit(fastmath=True)
 def im2col(A, M1, M2):
     # according to https://stackoverflow.com/questions/30109068/implement-matlabs-im2col-sliding-in-python
-    A = A.T
     m, n = A.shape
     s0, s1 = A.strides
     nrows = m - M1 + 1
@@ -17,8 +14,9 @@ def im2col(A, M1, M2):
     out_view = np.lib.stride_tricks.as_strided(A, shape=shp, strides=strd)
     return out_view.reshape(M1 * M2, -1)
 
+
 def get_blocks(image, phi, row_parity, valid_block_index, M1, M2):
-    block = im2col(VST(image.T, phi), M1, M2)
+    block = im2col(VST(image, phi), M1, M2)
     block = block[int(row_parity) - 1::2, valid_block_index]
     return np.squeeze(block).T
 
