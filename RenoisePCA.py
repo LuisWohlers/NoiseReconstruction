@@ -21,7 +21,7 @@ def im2col(A, M1, M2):
 
 def pca_svd_latent(x):
     x -= np.mean(x, axis=0)
-    S = scipy.linalg.svd(x, full_matrices=False, compute_uv=False)
+    _,S,_,_ = scipy.linalg.lapack.sgesdd(x, full_matrices=False, compute_uv=False)
     return (S ** 2) / (x.shape[0] - 1)
 
 
