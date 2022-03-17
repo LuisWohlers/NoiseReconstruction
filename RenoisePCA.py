@@ -1,78 +1,77 @@
-import scipy
-import numpy as np
-from math import sqrt
-import NoiseParameterEstimation as est
+"""image noise reconstruction"""
 import time
+import numpy as np
+import scipy
+import NoiseParameterEstimation as est
 
+def im_2col(input_image, m_1, m_2):
+    """like MatLab's im_2col, according to
+    https://stackoverflow.com/questions/30109068/implement-matlabs-im_2col-sliding-in-python"""
+    input_rows, input_cols = input_image.shape
+    s_0, s_1 = input_image.strides
+    n_rows = input_rows - m_1 + 1
+    n_cols = input_cols - m_2 + 1
+    shape = m_1, m_2, n_rows, n_cols
+    strides = s_0, s_1, s_0, s_1
 
-def im2col(A, M1, M2):
-    # according to https://stackoverflow.com/questions/30109068/implement-matlabs-im2col-sliding-in-python
-    A = A.T
-    m, n = A.shape
-    s0, s1 = A.strides
-    nrows = m - M1 + 1
-    ncols = n - M2 + 1
-    shp = M1, M2, nrows, ncols
-    strd = s0, s1, s0, s1
+    out_view = np.lib.stride_tricks.as_strided(input_image, shape=shape, strides=strides)
+    return out_view.reshape(m_1 * m_2, -1)
 
-    out_view = np.lib.stride_tricks.as_strided(A, shape=shp, strides=strd)
-    return out_view.reshape(M1 * M2, -1)
+def pca_svd_latent(data):
+    """perform PCA"""
+    data -= np.mean(data, axis=0)
+    _,mat_s,_,_ = scipy.linalg.lapack.sgesdd(data, full_matrices=False, compute_uv=False)
+    return (mat_s ** 2) / (data.shape[0] - 1)
 
+def VSTab(input_image, param_a, param_b, sigma):
+    """variance stabilizing transformation"""
+    if param_a == 0 and param_b == 0:
+        return input_image
+    if param_a > 2.220446049250313e-16:  # np.finfo(float).eps
+        return (2 * sigma / param_a) * np.sqrt(param_a * input_image + param_b)
+    return input_image / np.sqrt(param_b)
 
-def pca_svd_latent(x):
-    x -= np.mean(x, axis=0)
-    _,S,_,_ = scipy.linalg.lapack.sgesdd(x, full_matrices=False, compute_uv=False)
-    return (S ** 2) / (x.shape[0] - 1)
-
-
-def VSTab(t, a, b, sigma):
-    if a == 0 and b == 0:
-        return t
-    if a > 2.220446049250313e-16:  # np.finfo(float).eps
-        return (2 * sigma / a) * np.sqrt(a * t + b)
-    else:
-        return t / np.sqrt(b)
-
-
-def VSTreverse(y, a, b, sigma, bitdepth):
-    image = (np.square((y * a) / (2 * sigma)) - b) / a
+def VSTreverse(input_image, param_a, param_b, sigma, bitdepth):
+    """inverse variance stabilizing transformation"""
+    image = (np.square((input_image * param_a) / (2 * sigma)) - param_b) / param_a
     image[image > (pow(2, bitdepth) - 1)] = pow(2, bitdepth) - 1
     image[image < 0] = 0
     return image.round()
 
-
 def lambda_adjust(regionsize, blocksize):
+    """return factor for adjusting estimated lambda values at a given window size"""
     lambdas = np.zeros(10000)
-    for j in range(0, 10000):
+    for itr in range(0, 10000):
         noisematrix = np.random.normal(0, 1, (regionsize, regionsize))
-        dataset = im2col(noisematrix, blocksize, blocksize)
+        dataset = im_2col(noisematrix, blocksize, blocksize)
         latent = pca_svd_latent(dataset.T)
         lambdaP = latent[-1]
-        lambdas[j] = lambdaP
+        lambdas[itr] = lambdaP
         s_lambda = (1 / np.mean(lambdas)).round(3)
     return s_lambda
 
-
 def renoisePCA(image, regionsize, blocksize, sigma):
+    """noise reconstruction on input image, which needs to be variance stabilized already"""
     imgpadded = np.pad(image, np.floor(regionsize / 2).astype(int), "symmetric")
-    M = image.shape[0]
-    N = image.shape[1]
-    renoised = np.empty((M, N))
+    image_rows = image.shape[0]
+    image_cols = image.shape[1]
+    renoised = np.empty((image_rows, image_cols))
     s_lambda = lambda_adjust(regionsize, blocksize)
-    for i in range(0, M):
-        for j in range(0, N):
-            latent = pca_svd_latent(im2col(imgpadded[i:i + regionsize, j:j + regionsize], blocksize, blocksize).T)
+    for itr_i in range(0, image_rows):
+        for itr_j in range(0, image_cols):
+            latent = pca_svd_latent(im_2col(imgpadded[itr_i:itr_i + regionsize,
+                            itr_j:itr_j + regionsize], blocksize, blocksize).T)
             lambda_p_adjusted = (latent[-1] * s_lambda)
             if lambda_p_adjusted < np.square(sigma):
                 vartoadd = abs(np.square(sigma) - lambda_p_adjusted)
-                renoised[i, j] = image[i, j] + np.random.normal(0, sqrt(vartoadd))
+                renoised[itr_i, itr_j] = image[itr_i, itr_j] + np.random.normal(0, np.sqrt(vartoadd))
             else:
-                renoised[i, j] = image[i, j]
+                renoised[itr_i, itr_j] = image[itr_i, itr_j]
     return renoised
 
-
-def reconstructNoise(originalimage, degradedimage, bitdepth, analyse_blocksize, renoise_regionsize, renoise_blocksize,
-                     sigma):
+def reconstructNoise(originalimage, degradedimage, bitdepth, analyse_blocksize,
+                    renoise_regionsize, renoise_blocksize, sigma):
+    """noise parameter estimation on original image and reconstruction on degraded image"""
     starttime = time.time()
     a_original, b_original = est.estimate_noise_parameters(originalimage, analyse_blocksize)
     endtime = time.time() - starttime
@@ -83,13 +82,13 @@ def reconstructNoise(originalimage, degradedimage, bitdepth, analyse_blocksize, 
     print("b param of original image:")
     print(b_original)
 
-    VSTdegradedimage = VSTab(degradedimage, a_original, b_original, sigma).astype(float)
+    vst_degradedimage = VSTab(degradedimage, a_original, b_original, sigma).astype(float)
     starttime = time.time()
-    renoisedVST = renoisePCA(VSTdegradedimage, renoise_regionsize, renoise_blocksize, sigma)
+    renoised_vst = renoisePCA(vst_degradedimage, renoise_regionsize, renoise_blocksize, sigma)
     endtime = time.time() - starttime
     print("Renoise time:")
     print(endtime)
-    finalimage = VSTreverse(renoisedVST, a_original, b_original, sigma, bitdepth)
+    finalimage = VSTreverse(renoised_vst, a_original, b_original, sigma, bitdepth)
     starttime = time.time()
     a_final, b_final = est.estimate_noise_parameters(finalimage, analyse_blocksize)
     endtime = time.time() - starttime
@@ -102,35 +101,40 @@ def reconstructNoise(originalimage, degradedimage, bitdepth, analyse_blocksize, 
 
     return finalimage, a_original, b_original, a_final, b_final
 
-def reconstructNoise_RGB(originalimage, degradedimage, bitdepth, analyse_blocksize, renoise_regionsize, renoise_blocksize,
-                     sigma,a=-1,b=-1):
-
+def reconstructNoise_RGB(originalimage, degradedimage, bitdepth, analyse_blocksize,
+                    renoise_regionsize, renoise_blocksize,
+                    sigma,param_a=-1,param_b=-1):
+    """estimate noise on originalimage and reconstruct on degraded image, rgb"""
     starttime = time.time()
     finalimage = np.zeros(originalimage.shape)
-    for i in range(0,3):
-        if a == -1 and b == -1:
-            a, b = est.estimate_noise_parameters(originalimage[:,:,i],analyse_blocksize)
-        VSTdegradedimage = VSTab(degradedimage[:,:,i], a, b, sigma).astype(float)
+    for itr in range(0,3):
+        if param_a == -1 and param_b == -1:
+            param_a, param_b = est.estimate_noise_parameters(originalimage[:,:,itr],
+                                                            analyse_blocksize)
+        VSTdegradedimage = VSTab(degradedimage[:,:,itr], param_a, param_b, sigma).astype(float)
         renoisedVST = renoisePCA(VSTdegradedimage,renoise_regionsize,renoise_blocksize,sigma)
-        finalimage[:,:,i] = VSTreverse(renoisedVST,a,b,sigma,bitdepth)
+        finalimage[:,:,itr] = VSTreverse(renoisedVST,param_a,param_b,sigma,bitdepth)
     endtime = time.time()
     print("time expired: " + endtime-starttime + " seconds")
 
     return finalimage
 
-def reconstructNoise_RGB_ab_perchannel(originalimage, degradedimage, bitdepth, analyse_blocksize, renoise_regionsize, renoise_blocksize,
-                     sigma,a=(-1,-1,-1),b=(-1,-1,-1)):
-
+def reconstructNoise_RGB_ab_perchannel(originalimage, degradedimage, bitdepth, analyse_blocksize,
+                    renoise_regionsize, renoise_blocksize,
+                    sigma,param_a=(-1,-1,-1),param_b=(-1,-1,-1)):
+    """estimate noise on originalimage and reconstruct on degraded image, rgb, different params
+    per channel"""
     starttime = time.time()
     finalimage = np.zeros(originalimage.shape)
-    for i in range(0,3):
-        if a[i] == -1 and b[i] == -1:
-            a[i], b[i] = est.estimate_noise_parameters(originalimage[:,:,i],analyse_blocksize)
-        VSTdegradedimage = VSTab(degradedimage[:,:,i], a[i], b[i], sigma).astype(float)
+    for itr in range(0,3):
+        if param_a[itr] == -1 and param_b[itr] == -1:
+            param_a[itr], param_b[itr] = est.estimate_noise_parameters(originalimage[:,:,itr],
+                                                                            analyse_blocksize)
+        VSTdegradedimage = VSTab(degradedimage[:,:,itr],
+                                param_a[itr], param_b[itr], sigma).astype(float)
         renoisedVST = renoisePCA(VSTdegradedimage,renoise_regionsize,renoise_blocksize,sigma)
-        finalimage[:,:,i] = VSTreverse(renoisedVST,a[i],b[i],sigma,bitdepth)
+        finalimage[:,:,itr] = VSTreverse(renoisedVST,param_a[itr],param_b[itr],sigma,bitdepth)
     endtime = time.time()
     print("time expired: " + endtime-starttime + " seconds")
 
     return finalimage
-
