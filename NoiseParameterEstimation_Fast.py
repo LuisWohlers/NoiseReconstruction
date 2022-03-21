@@ -52,7 +52,7 @@ def optimize(func, transformed_a, transformed_b, accuracy, image, tau, block_cou
     opt_x = scipy.optimize.fminbound(func, transformed_a, transformed_b,
                                     args=(image, tau, block_count, m_1, m_2),
                                     xtol=accuracy, maxfun=10000,
-                                     full_output=0, disp=0)
+                                    full_output=0, disp=0)
     return opt_x
 
 def pca_svd_score(data):
@@ -90,7 +90,7 @@ def estimate_noise_parameters(image, blocksize):
         param_a = np.square(sigma[-1]) * np.cos(phi[-1])
         param_b = np.square(sigma[-1]) * np.sin(phi[-1])
         tau = sort_blocks(image, phi[-1], valid_block_index, m_1, m_2).astype(int)
-        block_count = 5000
+        block_count = 2500
         curr_phi = 0
         curr_sigma = 0
 
@@ -108,7 +108,7 @@ def estimate_noise_parameters(image, blocksize):
                     break
             else:
                 break
-            block_count = block_count + 25000
+            block_count = block_count + 5000
         phi.append(curr_phi)
         sigma.append(curr_sigma)
     return param_a, param_b
