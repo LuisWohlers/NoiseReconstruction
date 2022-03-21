@@ -11,5 +11,5 @@ def add_PoissonGaussianNoise_RGB(image,param_a,param_b,bits):
                                     output_y.shape[1],output_y.shape[2])
     output_y[output_y>pow(2,bits)-1] = pow(2,bits)-1
     output_y[output_y<0] = 0
-    return output_y.round(0)  
+    return output_y.round(0).astype(np.uint8)  
 
