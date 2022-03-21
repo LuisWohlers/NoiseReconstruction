@@ -2,7 +2,7 @@
 import time
 import numpy as np
 import scipy
-import NoiseParameterEstimation as est
+import NoiseParameterEstimation_Fast as est
 
 def im_2col(input_image, m_1, m_2):
     """like MatLab's im_2col, according to
