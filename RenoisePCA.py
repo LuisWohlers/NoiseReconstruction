@@ -113,9 +113,9 @@ def reconstructNoise_RGB(originalimage, degradedimage, bitdepth, analyse_blocksi
                                                             analyse_blocksize)
         VSTdegradedimage = VSTab(degradedimage[:,:,itr], param_a, param_b, sigma).astype(float)
         renoisedVST = renoisePCA(VSTdegradedimage,renoise_regionsize,renoise_blocksize,sigma)
-        finalimage[:,:,itr] = VSTreverse(renoisedVST,param_a,param_b,sigma,bitdepth)
+        finalimage[:,:,itr] = VSTreverse(renoisedVST,param_a,param_b,sigma,bitdepth).astype(np.uint8)
     endtime = time.time()
-    print("time expired: " + endtime-starttime + " seconds")
+    print("time expired: " + str(endtime-starttime) + " seconds")
 
     return finalimage
 
@@ -133,8 +133,8 @@ def reconstructNoise_RGB_ab_perchannel(originalimage, degradedimage, bitdepth, a
         VSTdegradedimage = VSTab(degradedimage[:,:,itr],
                                 param_a[itr], param_b[itr], sigma).astype(float)
         renoisedVST = renoisePCA(VSTdegradedimage,renoise_regionsize,renoise_blocksize,sigma)
-        finalimage[:,:,itr] = VSTreverse(renoisedVST,param_a[itr],param_b[itr],sigma,bitdepth)
+        finalimage[:,:,itr] = VSTreverse(renoisedVST,param_a[itr],param_b[itr],sigma,bitdepth).astype(np.uint8)
     endtime = time.time()
-    print("time expired: " + endtime-starttime + " seconds")
+    print("time expired: " + str(endtime-starttime) + " seconds")
 
     return finalimage
