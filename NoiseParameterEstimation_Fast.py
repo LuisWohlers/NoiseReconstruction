@@ -16,9 +16,9 @@ def im_2col(input_image, m_1, m_2):
     out_view = np.lib.stride_tricks.as_strided(input_image, shape=shape, strides=strides)
     return out_view.reshape(m_1 * m_2, -1)
 
-def get_valid_block_index(image, M1, M2):
+def get_valid_block_index(image, m_1, m_2):
     """extract valid block indices"""
-    block = im_2col(image, M1, M2)
+    block = im_2col(image, m_1, m_2)
     minimums = np.min(block,axis=0)
     maximums = np.max(block,axis=0)
     equal_minmax = minimums==maximums
