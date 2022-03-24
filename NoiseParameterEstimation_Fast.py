@@ -1,5 +1,4 @@
-"""implementation of Pytaykh's noise parameter estimation algorithm,
-without texture check to speed up computation time"""
+"""implementation of Pytaykh's noise parameter estimation algorithm"""
 from scipy.stats import kurtosis
 import scipy
 import numpy as np
@@ -16,6 +15,17 @@ def im_2col(input_image, m_1, m_2):
 
     out_view = np.lib.stride_tricks.as_strided(input_image, shape=shape, strides=strides)
     return out_view.reshape(m_1 * m_2, -1)
+
+def get_valid_block_index(image, M1, M2):
+    block = im2col(image.T, M1, M2)
+    minimums = np.min(block,axis=0)
+    maximums = np.max(block,axis=0)
+    equal_minmax = minimums==maximums
+    invalid_grayvalue = np.unique(minimums[equal_minmax])
+    blocks_ok = ((np.isin(block,invalid_grayvalue) + (block <= 0) + (block >= 255)) >= 1) == 0
+    blocks_ok_rows = np.all(blocks_ok,axis=0)
+    valid_block_index = np.where(blocks_ok_rows)
+    return np.array(valid_block_index).astype(int).T
 
 def get_blocks(image, phi, row_parity, valid_block_index, m_1, m_2):
     """extract block structure from image"""
@@ -79,8 +89,7 @@ def estimate_noise_parameters(image, blocksize):
     m_1 = blocksize
     m_2 = blocksize
 
-    block = im_2col(image, m_1, m_2)
-    valid_block_index = np.arange(0, block.shape[1]).astype(int)
+    valid_block_index = get_valid_block_index(image,m_1,m_2)
 
     phi = [0.0]
     sigma = [0.0]
