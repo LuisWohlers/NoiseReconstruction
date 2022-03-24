@@ -17,6 +17,7 @@ def im_2col(input_image, m_1, m_2):
     return out_view.reshape(m_1 * m_2, -1)
 
 def get_valid_block_index(image, M1, M2):
+    """extract valid block indices"""
     block = im_2col(image, M1, M2)
     minimums = np.min(block,axis=0)
     maximums = np.max(block,axis=0)
