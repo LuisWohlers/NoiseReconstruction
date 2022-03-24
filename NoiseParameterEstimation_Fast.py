@@ -98,7 +98,7 @@ def estimate_noise_parameters(image, blocksize):
     curr_sigma = 0.0
 
     while block_count <= len(tau):
-        opt_phi = optimize(compute_kurtosis, 0, np.pi / 2 - 0.001, 0.001,
+        opt_phi = optimize(compute_kurtosis, 0, np.pi / 2 - 0.001, 0.01,
                         image, tau, block_count, m_1,
                         m_2)
         opt_kurtosis = compute_kurtosis(opt_phi, image, tau, block_count, m_1, m_2)
