@@ -19,26 +19,14 @@ def im2col(A, M1, M2):
 
 def get_valid_block_index(image, M1, M2):
     block = im2col(image.T, M1, M2)
-    invalid_grayvalue = []
-    for j in range(0, block.shape[1]):
-        min_gv = np.min(block[:, j])
-        max_gv = np.max(block[:, j])
-        if min_gv == max_gv and not min_gv in invalid_grayvalue:
-            invalid_grayvalue.append(min_gv)
-
-    valid_block_index = np.zeros((block.shape[1], 1))
-    valid_block_index_count = 0
-    for j in range(0, block.shape[1]):
-        block_ok = True
-        for i in range(0, block.shape[0]):
-            if block[
-                i, j] in invalid_grayvalue or block[i, j] <= 0 or block[i, j] >= 255:
-                block_ok = False
-                break
-        if block_ok:
-            valid_block_index_count = valid_block_index_count + 1
-            valid_block_index[valid_block_index_count - 1] = j
-    return valid_block_index[0:valid_block_index_count].astype(int)
+    minimums = np.min(block,axis=0)
+    maximums = np.max(block,axis=0)
+    equal_minmax = minimums==maximums
+    invalid_grayvalue = np.unique(minimums[equal_minmax])
+    blocks_ok = ((np.isin(block,invalid_grayvalue) + (block <= 0) + (block >= 255)) >= 1) == 0
+    blocks_ok_rows = np.all(blocks_ok,axis=0)
+    valid_block_index = np.where(blocks_ok_rows)
+    return np.array(valid_block_index).astype(int).T
 
 
 def get_blocks(image, phi, row_parity, valid_block_index, M1, M2):
