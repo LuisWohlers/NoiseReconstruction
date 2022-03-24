@@ -1,6 +1,8 @@
 """implementation of Pytaykh's noise parameter estimation algorithm"""
 from scipy.stats import kurtosis
-import scipy
+from scipy.linalg.lapack import sgesdd
+from scipy.optimize import fminbound
+from np.lib.stride_stricks import as_strided
 import numpy as np
 
 def im_2col(input_image, m_1, m_2):
@@ -13,7 +15,7 @@ def im_2col(input_image, m_1, m_2):
     shape = m_1, m_2, n_rows, n_cols
     strides = s_0, s_1, s_0, s_1
 
-    out_view = np.lib.stride_tricks.as_strided(input_image, shape=shape, strides=strides)
+    out_view = as_strided(input_image, shape=shape, strides=strides)
     return out_view.reshape(m_1 * m_2, -1)
 
 def get_valid_block_index(image, m_1, m_2):
@@ -60,7 +62,7 @@ def compute_std(image, phi, tau, block_count, m_1, m_2):
 
 def optimize(func, transformed_a, transformed_b, accuracy, image, tau, block_count, m_1, m_2):
     """optimize transformed parameters"""
-    opt_x = scipy.optimize.fminbound(func, transformed_a, transformed_b,
+    opt_x = fminbound(func, transformed_a, transformed_b,
                                     args=(image, tau, block_count, m_1, m_2),
                                     xtol=accuracy, maxfun=10000,
                                     full_output=0, disp=0)
@@ -69,13 +71,13 @@ def optimize(func, transformed_a, transformed_b, accuracy, image, tau, block_cou
 def pca_svd_score(data):
     """perform pca using scipy's lapack interface"""
     data -= np.mean(data, axis=0)
-    u_mat, s_mat, _, _ = scipy.linalg.lapack.sgesdd(data, full_matrices=False)
+    u_mat, s_mat, _, _ = sgesdd(data, full_matrices=False)
     return u_mat * s_mat
 
 def pca_svd_latent(data):
     """perform pca using scipy's lapack interface"""
     data -= np.mean(data, axis=0)
-    _,s_mat,_,_ = scipy.linalg.lapack.sgesdd(data, full_matrices=False, compute_uv=False)
+    _,s_mat,_,_ = sgesdd(data, full_matrices=False, compute_uv=False)
     return (s_mat ** 2) / (data.shape[0] - 1)
 
 def compute_kurtosis(phi, image, tau, block_count, m_1, m_2):
