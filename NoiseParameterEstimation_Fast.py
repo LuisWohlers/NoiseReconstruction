@@ -17,7 +17,7 @@ def im_2col(input_image, m_1, m_2):
     return out_view.reshape(m_1 * m_2, -1)
 
 def get_valid_block_index(image, M1, M2):
-    block = im2col(image.T, M1, M2)
+    block = im_2col(image, M1, M2)
     minimums = np.min(block,axis=0)
     maximums = np.max(block,axis=0)
     equal_minmax = minimums==maximums
@@ -91,33 +91,30 @@ def estimate_noise_parameters(image, blocksize):
 
     valid_block_index = get_valid_block_index(image,m_1,m_2)
 
-    phi = [0.0]
-    sigma = [0.0]
-    while (len(phi) < 20) and (len(phi) < 3 \
-        or np.min(np.abs(np.array(phi)[1:-1] - np.array(phi)[-1])) > 0.001):
+    phi = 0.0
+    sigma = 0.0
+    tau = sort_blocks(image, phi, valid_block_index, m_1, m_2).astype(int)
+    block_count = 500
+    curr_phi = 0.0
+    curr_sigma = 0.0
 
-        param_a = np.square(sigma[-1]) * np.cos(phi[-1])
-        param_b = np.square(sigma[-1]) * np.sin(phi[-1])
-        tau = sort_blocks(image, phi[-1], valid_block_index, m_1, m_2).astype(int)
-        block_count = 2500
-        curr_phi = 0
-        curr_sigma = 0
-
-        while block_count <= len(tau):
-
-            opt_phi = optimize(compute_kurtosis, 0, np.pi / 2 - 0.001, 0.001,
-                            image, tau, block_count, m_1,
-                            m_2)
-            opt_kurtosis = compute_kurtosis(opt_phi, image, tau, block_count, m_1, m_2)
-            if opt_kurtosis < 3 or curr_phi == 0:
-                phi_converged = np.abs(opt_phi - curr_phi) < 0.0001
-                curr_phi = opt_phi
-                curr_sigma = compute_std(image, opt_phi, tau, block_count, m_1, m_2)
-                if phi_converged:
-                    break
-            else:
+    while block_count <= len(tau):
+        opt_phi = optimize(compute_kurtosis, 0, np.pi / 2 - 0.001, 0.001,
+                        image, tau, block_count, m_1,
+                        m_2)
+        opt_kurtosis = compute_kurtosis(opt_phi, image, tau, block_count, m_1, m_2)
+        if opt_kurtosis < 3 or curr_phi == 0:
+            phi_converged = np.abs(opt_phi - curr_phi) < 0.0005
+            curr_phi = opt_phi
+            curr_sigma = compute_std(image, opt_phi, tau, block_count, m_1, m_2)
+            if phi_converged:
                 break
-            block_count = block_count + 5000
-        phi.append(curr_phi)
-        sigma.append(curr_sigma)
+        else:
+            break
+        block_count = block_count + 5000
+    phi = curr_phi
+    sigma = curr_sigma
+
+    param_a = np.square(sigma) * np.cos(phi)
+    param_b = np.square(sigma) * np.sin(phi)
     return param_a, param_b
