@@ -2,7 +2,6 @@
 from scipy.stats import kurtosis
 from scipy.linalg.lapack import sgesdd
 from scipy.optimize import fminbound
-from np.lib.stride_stricks import as_strided
 import numpy as np
 
 def im_2col(input_image, m_1, m_2):
@@ -15,7 +14,7 @@ def im_2col(input_image, m_1, m_2):
     shape = m_1, m_2, n_rows, n_cols
     strides = s_0, s_1, s_0, s_1
 
-    out_view = as_strided(input_image, shape=shape, strides=strides)
+    out_view = np.lib.stride_tricks.as_strided(input_image, shape=shape, strides=strides)
     return out_view.reshape(m_1 * m_2, -1)
 
 def get_valid_block_index(image, m_1, m_2):
