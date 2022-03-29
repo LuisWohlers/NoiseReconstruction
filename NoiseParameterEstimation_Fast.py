@@ -94,7 +94,7 @@ def estimate_noise_parameters(image, blocksize):
     valid_block_index = get_valid_block_index(image,m_1,m_2)
 
     tau = sort_blocks(image, 0.0, valid_block_index, m_1, m_2).astype(int)
-    block_count = 500
+    block_count = 20000
     curr_phi = 0.0
     curr_sigma = 0.0
 
