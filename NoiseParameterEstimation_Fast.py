@@ -13,7 +13,7 @@ def im_2col(input_image, m_1, m_2):
     n_cols = input_cols - m_2 + 1
     shape = m_1, m_2, n_rows, n_cols
     strides = s_0, s_1, s_0, s_1
-
+    
     out_view = np.lib.stride_tricks.as_strided(input_image, shape=shape, strides=strides)
     return out_view.reshape(m_1 * m_2, -1)
 
@@ -27,12 +27,12 @@ def get_valid_block_index(image, m_1, m_2):
     blocks_ok = ((np.isin(block,invalid_grayvalue) + (block <= 0) + (block >= 255)) >= 1) == 0
     blocks_ok_rows = np.all(blocks_ok,axis=0)
     valid_block_index = np.where(blocks_ok_rows)
-    return np.array(valid_block_index).astype(int).T
+    return np.array(valid_block_index).T
 
 def get_blocks(image, phi, row_parity, valid_block_index, m_1, m_2):
     """extract block structure from image"""
     block = im_2col(vst(image, phi), m_1, m_2)
-    block = block[int(row_parity) - 1::2, valid_block_index]
+    block = block[row_parity - 1::2, valid_block_index]
     return np.squeeze(block).T
 
 def sort_blocks(image, phi, valid_block_index, m_1, m_2):
