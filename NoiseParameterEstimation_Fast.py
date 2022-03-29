@@ -91,7 +91,7 @@ def compute_kurtosis_return_block(phi, image, tau, block_count, m_1, m_2):
     block = get_blocks(image, phi, 1, tau[0:block_count], m_1, m_2)
     score = pca_svd_score(block)
     result_g = (kurtosis(score[:, -1], fisher=False) - 3) * np.sqrt(block_count / 24)
-    return result_g,block
+    return result_g, block
 
 def estimate_noise_parameters(image, blocksize):
     """main noise parameter estimation function"""
