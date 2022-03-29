@@ -53,9 +53,9 @@ def vst(input_image, phi):
         return (2 / param_a) * np.sqrt(param_a * input_image + param_b)
     return input_image / np.sqrt(param_b)
 
-def compute_std(image, phi, tau, block_count, m_1, m_2):
+def compute_std(block):
     """compute standard deviation from blocks"""
-    block = get_blocks(image, phi, 1, tau[0:block_count], m_1, m_2)
+    #block = get_blocks(image, phi, 1, tau[0:block_count], m_1, m_2)
     latent = pca_svd_latent(block)
     return np.sqrt(latent[-1])
 
@@ -86,6 +86,13 @@ def compute_kurtosis(phi, image, tau, block_count, m_1, m_2):
     result_g = (kurtosis(score[:, -1], fisher=False) - 3) * np.sqrt(block_count / 24)
     return result_g
 
+def compute_kurtosis_return_block(phi, image, tau, block_count, m_1, m_2):
+    """compute kurtosis from blocks, return block as well"""
+    block = get_blocks(image, phi, 1, tau[0:block_count], m_1, m_2)
+    score = pca_svd_score(block)
+    result_g = (kurtosis(score[:, -1], fisher=False) - 3) * np.sqrt(block_count / 24)
+    return result_g,block
+
 def estimate_noise_parameters(image, blocksize):
     """main noise parameter estimation function"""
     m_1 = blocksize
@@ -102,11 +109,11 @@ def estimate_noise_parameters(image, blocksize):
         opt_phi = optimize(compute_kurtosis, 0, np.pi / 2 - 0.001, 0.01,
                         image, tau, block_count, m_1,
                         m_2)
-        opt_kurtosis = compute_kurtosis(opt_phi, image, tau, block_count, m_1, m_2)
+        opt_kurtosis,block = compute_kurtosis_return_block(opt_phi, image, tau, block_count, m_1, m_2)
         if opt_kurtosis < 3 or curr_phi == 0:
             phi_converged = np.abs(opt_phi - curr_phi) < 0.0005
             curr_phi = opt_phi
-            curr_sigma = compute_std(image, opt_phi, tau, block_count, m_1, m_2)
+            curr_sigma = compute_std(block)
             if phi_converged:
                 break
         else:
