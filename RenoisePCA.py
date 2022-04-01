@@ -73,16 +73,27 @@ def VSTreverse(input_image, param_a, param_b, sigma, bitdepth):
     return image.round()
 
 
+#def lambda_adjust(regionsize, blocksize):
+#    """return factor for adjusting estimated lambda values at a given window size"""
+#    lambdas = np.zeros(10000)
+#    for itr in range(0, 10000):
+#        noisematrix = np.random.normal(0, 1, (regionsize, regionsize))
+#        dataset = im_2col(noisematrix, blocksize, blocksize)
+#        latent = pca_svd_latent(dataset.T)
+#        lambdaP = latent[-1]
+#        lambdas[itr] = lambdaP
+#        s_lambda = (1 / np.mean(lambdas)).round(3)
+#    return s_lambda
+
 def lambda_adjust(regionsize, blocksize):
     """return factor for adjusting estimated lambda values at a given window size"""
-    lambdas = np.zeros(10000)
-    for itr in range(0, 10000):
-        noisematrix = np.random.normal(0, 1, (regionsize, regionsize))
-        dataset = im_2col(noisematrix, blocksize, blocksize)
-        latent = pca_svd_latent(dataset.T)
-        lambdaP = latent[-1]
-        lambdas[itr] = lambdaP
-        s_lambda = (1 / np.mean(lambdas)).round(3)
+    noisematrix = np.random.normal(0, 1, (regionsize, regionsize,10000))
+    dataset = blocks_2col(noisematrix, blocksize, blocksize)
+    latent = np.array(Parallel(n_jobs=4)(delayed(pca_svd_latent)\
+                                                    (dataset[:, :, i].T) for i in \
+                                                   range(10000)))
+    lambdas = latent[:,-1]
+    s_lambda = (1 / np.mean(lambdas)).round(3)
     return s_lambda
 
 
@@ -129,6 +140,7 @@ def renoisePCA(image, regionsize, blocksize, sigma):
 def reconstructNoise(originalimage, degradedimage, bitdepth, analyse_blocksize,
                      renoise_regionsize, renoise_blocksize, sigma):
     """noise parameter estimation on original image and reconstruction on degraded image"""
+    overall_starttime = time.time()
     starttime = time.time()
     a_original, b_original = est.estimate_noise_parameters(originalimage, analyse_blocksize)
     endtime = time.time() - starttime
@@ -138,7 +150,6 @@ def reconstructNoise(originalimage, degradedimage, bitdepth, analyse_blocksize,
     print(a_original)
     print("b param of original image:")
     print(b_original)
-
     vst_degradedimage = VSTab(degradedimage, a_original, b_original, sigma).astype(float)
     starttime = time.time()
     renoised_vst = renoisePCA(vst_degradedimage, renoise_regionsize, renoise_blocksize, sigma)
@@ -155,7 +166,9 @@ def reconstructNoise(originalimage, degradedimage, bitdepth, analyse_blocksize,
     print(a_final)
     print("b param of final image:")
     print(b_final)
-
+    overall_endtime = time.time()
+    print("Overall time in seconds: ")
+    print(overall_endtime-overall_starttime)
     return finalimage, a_original, b_original, a_final, b_final
 
 
