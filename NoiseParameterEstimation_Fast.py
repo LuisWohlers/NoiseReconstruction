@@ -4,6 +4,7 @@ from scipy.linalg.lapack import sgesdd
 from scipy.optimize import fminbound
 import numpy as np
 
+
 def im_2col(input_image, m_1, m_2):
     """like MatLab's im_2col, according to
     https://stackoverflow.com/questions/30109068/implement-matlabs-im_2col-sliding-in-python"""
@@ -13,27 +14,30 @@ def im_2col(input_image, m_1, m_2):
     n_cols = input_cols - m_2 + 1
     shape = m_1, m_2, n_rows, n_cols
     strides = s_0, s_1, s_0, s_1
-    
+
     out_view = np.lib.stride_tricks.as_strided(input_image, shape=shape, strides=strides)
     return out_view.reshape(m_1 * m_2, -1)
+
 
 def get_valid_block_index(image, m_1, m_2):
     """extract valid block indices"""
     block = im_2col(image, m_1, m_2)
-    minimums = np.min(block,axis=0)
-    maximums = np.max(block,axis=0)
-    equal_minmax = minimums==maximums
+    minimums = np.min(block, axis=0)
+    maximums = np.max(block, axis=0)
+    equal_minmax = minimums == maximums
     invalid_grayvalue = np.unique(minimums[equal_minmax])
-    blocks_ok = ((np.isin(block,invalid_grayvalue) + (block <= 0) + (block >= 255)) >= 1) == 0
-    blocks_ok_rows = np.all(blocks_ok,axis=0)
+    blocks_ok = ((np.isin(block, invalid_grayvalue) + (block <= 0) + (block >= 255)) >= 1) == 0
+    blocks_ok_rows = np.all(blocks_ok, axis=0)
     valid_block_index = np.where(blocks_ok_rows)
     return np.array(valid_block_index).T
+
 
 def get_blocks(image, phi, row_parity, valid_block_index, m_1, m_2):
     """extract block structure from image"""
     block = im_2col(vst(image, phi), m_1, m_2)
     block = block[row_parity - 1::2, valid_block_index]
     return np.squeeze(block).T
+
 
 def sort_blocks(image, phi, valid_block_index, m_1, m_2):
     """sort blocks according to Pyatykh's method"""
@@ -45,6 +49,7 @@ def sort_blocks(image, phi, valid_block_index, m_1, m_2):
     blocks_t = blocks_t[np.argsort(blocks_t[:, 1])]
     return blocks_t[:, 0]
 
+
 def vst(input_image, phi):
     """variance stabilizing transformation"""
     param_a = np.cos(phi)
@@ -53,19 +58,21 @@ def vst(input_image, phi):
         return (2 / param_a) * np.sqrt(param_a * input_image + param_b)
     return input_image / np.sqrt(param_b)
 
+
 def compute_std(block):
     """compute standard deviation from blocks"""
-    #block = get_blocks(image, phi, 1, tau[0:block_count], m_1, m_2)
     latent = pca_svd_latent(block)
     return np.sqrt(latent[-1])
+
 
 def optimize(func, transformed_a, transformed_b, accuracy, image, tau, block_count, m_1, m_2):
     """optimize transformed parameters"""
     opt_x = fminbound(func, transformed_a, transformed_b,
-                                    args=(image, tau, block_count, m_1, m_2),
-                                    xtol=accuracy, maxfun=10000,
-                                    full_output=0, disp=0)
+                      args=(image, tau, block_count, m_1, m_2),
+                      xtol=accuracy, maxfun=10000,
+                      full_output=False, disp=0)
     return opt_x
+
 
 def pca_svd_score(data):
     """perform pca using scipy's lapack interface"""
@@ -73,11 +80,13 @@ def pca_svd_score(data):
     u_mat, s_mat, _, _ = sgesdd(data, full_matrices=False)
     return u_mat * s_mat
 
+
 def pca_svd_latent(data):
     """perform pca using scipy's lapack interface"""
     data -= np.mean(data, axis=0)
-    _,s_mat,_,_ = sgesdd(data, full_matrices=False, compute_uv=False)
+    _, s_mat, _, _ = sgesdd(data, full_matrices=False, compute_uv=False)
     return (s_mat ** 2) / (data.shape[0] - 1)
+
 
 def compute_kurtosis(phi, image, tau, block_count, m_1, m_2):
     """compute kurtosis from blocks"""
@@ -86,6 +95,7 @@ def compute_kurtosis(phi, image, tau, block_count, m_1, m_2):
     result_g = (kurtosis(score[:, -1], fisher=False) - 3) * np.sqrt(block_count / 24)
     return result_g
 
+
 def compute_kurtosis_return_block(phi, image, tau, block_count, m_1, m_2):
     """compute kurtosis from blocks, return block as well"""
     block = get_blocks(image, phi, 1, tau[0:block_count], m_1, m_2)
@@ -93,12 +103,13 @@ def compute_kurtosis_return_block(phi, image, tau, block_count, m_1, m_2):
     result_g = (kurtosis(score[:, -1], fisher=False) - 3) * np.sqrt(block_count / 24)
     return result_g, block
 
+
 def estimate_noise_parameters(image, blocksize):
     """main noise parameter estimation function"""
     m_1 = blocksize
     m_2 = blocksize
 
-    valid_block_index = get_valid_block_index(image,m_1,m_2)
+    valid_block_index = get_valid_block_index(image, m_1, m_2)
 
     tau = sort_blocks(image, 0.0, valid_block_index, m_1, m_2).astype(int)
     block_count = 20000
@@ -107,9 +118,9 @@ def estimate_noise_parameters(image, blocksize):
 
     while block_count <= len(tau):
         opt_phi = optimize(compute_kurtosis, 0, np.pi / 2 - 0.001, 0.01,
-                        image, tau, block_count, m_1,
-                        m_2)
-        opt_kurtosis,block = compute_kurtosis_return_block(opt_phi, image, tau, block_count, m_1, m_2)
+                           image, tau, block_count, m_1,
+                           m_2)
+        opt_kurtosis, block = compute_kurtosis_return_block(opt_phi, image, tau, block_count, m_1, m_2)
         if opt_kurtosis < 3 or curr_phi == 0:
             phi_converged = np.abs(opt_phi - curr_phi) < 0.0005
             curr_phi = opt_phi
