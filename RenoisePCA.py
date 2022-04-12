@@ -126,9 +126,10 @@ def renoisePCA(image, regionsize, blocksize, sigma):
     s_lambda = lambda_adjust(regionsize, blocksize)
     windows_dataset = im_2block(imgpadded, regionsize, regionsize)
     windows_dataset = blocks_2col(windows_dataset, blocksize, blocksize)
-    latent_per_block = np.array(Parallel(n_jobs=4)(delayed(pca_svd_latent)\
-                                                    (windows_dataset[:, :, i]) for i in \
-                                                   range(windows_dataset.shape[-1])))
+    with parallel_backend('multiprocessing',n_jobs=-1):
+        latent_per_block = np.array(Parallel(batch_size='auto')(delayed(pca_svd_latent)\
+                                                        (windows_dataset[:, :, i]) for i in \
+                                                       range(windows_dataset.shape[-1])))
     lambdas_p_adjusted = latent_per_block[:, -1] * s_lambda
     indices = np.where(lambdas_p_adjusted < np.square(sigma))[0]
     varstoadd = np.ones(lambdas_p_adjusted.shape) * np.abs(np.square(sigma)) - lambdas_p_adjusted
