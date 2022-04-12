@@ -3,7 +3,8 @@ import time
 import numpy as np
 import scipy
 import NoiseParameterEstimation_Fast as est
-from joblib import Parallel, delayed
+from joblib import Parallel, delayed, parallel_backend
+
 
 
 def im_2col(input_image, m_1, m_2):
